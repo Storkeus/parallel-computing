@@ -1,10 +1,13 @@
 ﻿#include <stdio.h>
 #include <omp.h>
 #include <math.h>
+#include <time.h>
 #include <iostream>
+#include <fstream>
+#include <clocale>
 
-#define MIN 1000
-#define MAX 2000
+#define MIN 100
+#define MAX 100000
 #define NUMBER_OF_NUMBERS MAX-MIN //Optymalizacja rozmiaru tablicy liczb
 #define SHOW_RESULTS 1
 
@@ -43,7 +46,7 @@ void removeMultiplications(int number, DynamicArrayBool* arr, int min, int max)
 	int firstNumberMultiplication = findFirstMultiplicationInRange(min, number);
 	for (int multiplication = firstNumberMultiplication; multiplication <= max; multiplication += number)
 	{
-		//std::cout << multiplication << std::endl;
+	//	std::cout << multiplication << std::endl << std::flush;;
 		arr->arr[multiplication - min] = true;
 	}
 
@@ -54,29 +57,38 @@ void removeMultiplications(int number, DynamicArrayBool* arr, int min, int max)
 void findPrimeNumbers(int min, int max, DynamicArrayBool* numbers)
 {
 
+
 	//Warunek stopu - usunięcie liczb parzystych
-	if (max == 2)
+	if (max <= 2)
 	{
 		removeMultiplications(2, numbers, min, max);
 		return;
 	}
+	int sqrtOfMax = sqrt(max);
+	findPrimeNumbers(2, sqrtOfMax, globalBaseNumbers);
 
-	findPrimeNumbers(2, sqrt(max), globalBaseNumbers);
-
-	for (int i = 2; i < sqrt(max); i++)
+#pragma omp parallel
 	{
-		int number = i;
-		if (!globalBaseNumbers->arr[i - 2])
+#pragma omp for
+		for (int i = 2; i < sqrtOfMax; i++)
 		{
-			//std::cout << "------" << min << "--------" << number << "--------" << max << "--------\n";
-			removeMultiplications(number, numbers, min, max);
-		}
 
+
+			int number = i;
+			if (!globalBaseNumbers->arr[i - 2])
+			{
+				//std::cout << "------" << min << "--------" << number << "--------" << max << "--------\n"<<std::flush;
+				removeMultiplications(number, numbers, min, max);
+			}
+
+		}
 	}
 
 }
 
 int main() {
+
+	std::setlocale(LC_ALL, "pl_PL.UTF-8");
 
 	//Tablica, której indeksy odpowiadają liczbom z zakresu <min;max>
 	//indeks zadanej liczby = liczba-min
@@ -90,21 +102,36 @@ int main() {
 	globalBaseNumbers->arr = new bool[(int)sqrt(MAX) - 2]{};
 	globalBaseNumbers->length = (int)sqrt(MAX) - 2;
 
+	clock_t start, stop;
+	start = clock();
+
 	//Rozpoczęcie poszukiwania liczb pierwszych
 	findPrimeNumbers(MIN, MAX, globalNumbers);
 
 
+
+	stop = clock();
+	
+
 	//Wyświetlanie wyników
 	if (SHOW_RESULTS)
 	{
+		printf("Czas przetwarzania wynosi %f sekund\n", ((double)(stop - start) / 1000.0));
+
+		std::ofstream result("results.txt");
+
+		unsigned long long resultsCount = 0;
 		for (int i = 0; i < globalNumbers->length; i++)
 		{
 			if (!globalNumbers->arr[i])
 			{
-				std::cout << i + MIN << std::endl;
+				result << i + MIN << std::endl;
+				resultsCount++;
 			}
 
 		}
+		result.close();
+		std::cout << "Ilosc liczb pierwszych w przedziale <" << MIN << ":" << MAX << ">: " << resultsCount << std::endl;
 	}
 
 }
