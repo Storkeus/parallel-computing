@@ -3,8 +3,8 @@
 #include <math.h>
 #include <iostream>
 
-#define MIN 2
-#define MAX 15
+#define MIN 1000
+#define MAX 2000
 #define NUMBER_OF_NUMBERS MAX-MIN //Optymalizacja rozmiaru tablicy liczb
 #define SHOW_RESULTS 1
 
@@ -20,23 +20,31 @@ DynamicArrayBool* globalBaseNumbers = new DynamicArrayBool;
 
 int findFirstMultiplicationInRange(int min, int number)
 {
+	//wielokrotność liczby najbliższa minimum
 	int multiplication = (min / number) * number;
 
-	while (multiplication < min)
-	{
-		multiplication += number;
-	}
+
+
+
+		while (multiplication < min || multiplication == number)
+		{
+			multiplication += number;
+		}
+	
+	
+		
 
 	return multiplication;
 }
 
-void removeMultiplications(int number,DynamicArrayBool* arr, int min,int max)
+void removeMultiplications(int number, DynamicArrayBool* arr, int min, int max)
 {
 
 	int firstNumberMultiplication = findFirstMultiplicationInRange(min, number);
-	for (int multiplication = firstNumberMultiplication+number; multiplication <= max; multiplication += number)
+	for (int multiplication = firstNumberMultiplication; multiplication <= max; multiplication += number)
 	{
-		arr->arr[multiplication-min] = true;
+		//std::cout << multiplication << std::endl;
+		arr->arr[multiplication - min] = true;
 	}
 
 }
@@ -47,18 +55,23 @@ void findPrimeNumbers(int min, int max, DynamicArrayBool* numbers)
 {
 
 	//Warunek stopu - usunięcie liczb parzystych
-	if (max <= 2)
+	if (max == 2)
 	{
-		removeMultiplications(2, numbers,min,max);
+		removeMultiplications(2, numbers, min, max);
 		return;
 	}
 
 	findPrimeNumbers(2, sqrt(max), globalBaseNumbers);
 
-	for(int i=min;i<max;i++)
+	for (int i = 2; i < sqrt(max); i++)
 	{
-		int number=i;
-		removeMultiplications(number, numbers, min,max);
+		int number = i;
+		if (!globalBaseNumbers->arr[i - 2])
+		{
+			//std::cout << "------" << min << "--------" << number << "--------" << max << "--------\n";
+			removeMultiplications(number, numbers, min, max);
+		}
+
 	}
 
 }
@@ -74,8 +87,8 @@ int main() {
 	//Tablica, której indekst odpowiadają liczbom z zakresu <2;sqrt(max)>
 	//indeks zadanej liczby = liczba-2
 	//wartość true = liczba usunięta
-	globalBaseNumbers->arr = new bool[(int)sqrt(MAX)-2]{};
-	globalBaseNumbers->length = (int)sqrt(MAX)-2;
+	globalBaseNumbers->arr = new bool[(int)sqrt(MAX) - 2]{};
+	globalBaseNumbers->length = (int)sqrt(MAX) - 2;
 
 	//Rozpoczęcie poszukiwania liczb pierwszych
 	findPrimeNumbers(MIN, MAX, globalNumbers);
@@ -90,7 +103,7 @@ int main() {
 			{
 				std::cout << i + MIN << std::endl;
 			}
-			
+
 		}
 	}
 
