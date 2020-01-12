@@ -9,8 +9,8 @@
 #include <cstdio>
 
 #define MIN 100
-#define MAX 2000000000
-#define NUMBER_OF_NUMBERS MAX-MIN //Optymalizacja rozmiaru tablicy liczb
+#define MAX 20000000
+#define NUMBER_OF_NUMBERS MAX-MIN+1 //Optymalizacja rozmiaru tablicy liczb
 #define SHOW_RESULTS 1
 
 
@@ -44,16 +44,27 @@ int findFirstMultiplicationInRange(int min, int number)
 
 void removeMultiplications(int number, DynamicArrayBool* arr, int min, int max)
 {
-	//printf("wykonal:%d\n",omp_get_thread_num());
+
 	int firstNumberMultiplication = findFirstMultiplicationInRange(min, number);
 	for (int multiplication = firstNumberMultiplication; multiplication <= max; multiplication += number)
 	{
 		//	std::cout << multiplication << std::endl << std::flush;;
-		if (!arr->arr[multiplication - min])
-		{
-			arr->arr[multiplication - min] = true;
-		}
+		arr->arr[multiplication - min] = true;
+	}
 
+}
+
+void findMultiplicationsToRemove(int number, int min, int max, int* indexesToRemove, int &indexesToRemoveCurrentIndex)
+{
+
+	int firstNumberMultiplication = findFirstMultiplicationInRange(min, number);
+	for (int multiplication = firstNumberMultiplication; multiplication <= max; multiplication += number)
+	{
+		//	std::cout << multiplication << std::endl << std::flush;;
+		//arr->arr[multiplication - min] = true;
+
+		indexesToRemove[indexesToRemoveCurrentIndex] = multiplication - min;
+		indexesToRemoveCurrentIndex++;
 	}
 
 }
@@ -73,29 +84,50 @@ void findPrimeNumbers(int min, int max, DynamicArrayBool* numbers)
 	int sqrtOfMax = sqrt(max);
 	findPrimeNumbers(2, sqrtOfMax, globalBaseNumbers);
 
-#pragma omp parallel
+
+#pragma omp parallel 
 	{
-#pragma omp for schedule(dynamic)
-		for (int i = 2; i < sqrtOfMax; i++)
+		int* indexesToRemove = new int[200000000];
+		int indexesToRemoveCurrentIndex = 0;
+
+		int localMin = min;
+		int localMax = max;
+		int localSqrtOfMax = sqrtOfMax;
+
+#pragma omp for
+		for (int i = 2; i < localSqrtOfMax; i++)
 		{
+
 
 			int number = i;
 			if (!globalBaseNumbers->arr[i - 2])
 			{
 				//std::cout << "------" << min << "--------" << number << "--------" << max << "--------\n"<<std::flush;
-				removeMultiplications(number, numbers, min, max);
+				//removeMultiplications(number, numbers, min, max);
+
+				findMultiplicationsToRemove(number, localMin, localMax, indexesToRemove, indexesToRemoveCurrentIndex);
 			}
 
 		}
+#pragma omp for
+		for (int i = 0; i < indexesToRemoveCurrentIndex; i++)
+		{
+			if (!numbers->arr[indexesToRemove[i]])
+			{
+				numbers->arr[indexesToRemove[i]] = true;
+			}
+		}
+
+
+		delete[] indexesToRemove;
 	}
+	
 
 }
 
 int main() {
 
 	std::setlocale(LC_ALL, "pl_PL.UTF-8");
-
-	omp_set_num_threads(4);
 
 	//Tablica, której indeksy odpowiadają liczbom z zakresu <min;max>
 	//indeks zadanej liczby = liczba-min
@@ -113,7 +145,9 @@ int main() {
 	start = clock();
 
 	//Rozpoczęcie poszukiwania liczb pierwszych
-	findPrimeNumbers(MIN, MAX, globalNumbers);
+
+		findPrimeNumbers(MIN, MAX, globalNumbers);
+	
 
 
 
@@ -124,7 +158,7 @@ int main() {
 	if (SHOW_RESULTS)
 	{
 		printf("Czas przetwarzania wynosi %f sekund\n", ((double)(stop - start) / 1000.0));
-
+		omp_set_num_threads(1);
 		FILE* file = fopen("results.txt", "w");
 
 
